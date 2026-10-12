@@ -21,7 +21,7 @@
           { no: "MFI/0066/26-27", sup: "Micro Fab Industries, Vapi", d: "Head box parts · PO 1947 · IGST 18%", amt: 7316000, status: "Above ₹10 lakh — sent to MD Decision Inbox" },
         ],
         steps: ["Gate", "Weighment", "QC", "GRN", "Packet to corporate", "Bill matched", "Posted in DataMan", "Paid"],
-        view: "dash", tab: "ov", mis: false, period: "today", kpi: null, next: 1047, zone: "pm", photos: 0, voucher: 8813, imported: false, importMsg: "",
+        view: "dash", tab: "ov", mis: false, period: "today", kpi: null, next: 1047, zone: "pm1", route: null, photos: 0, voucher: 8813, imported: false, importMsg: "",
         qcSel: null, grnSel: null, jSel: "IN-1041", billOpen: null, grnNo: 24117,
       };
 
@@ -458,15 +458,20 @@
               : `<li class="x-future"><p class="timeline__when">${s}</p><div class="timeline__what">Not yet</div></li>`).join("")}</ol>`;
         },
         map() {
-          const z = ZONES[D.zone], n = Object.keys(ZONES).length, warn = Object.values(ZONES).filter((x) => x.s !== "ok").length;
-          return `${head("Mill Map", `PM-1 Kraft is running; ${warn} areas need a look.`, `Plant · Gut No. 184, Kaygaon (NH 753F) · ${n - warn} of ${n} areas green · tap an area ${SAMPLE}`)}
+          const zr = ZR.find((x) => x.id === D.zone) || ZR[0], z = ZONES[zr.id], L = [...new Set(Object.values(ZONES))], n = L.length, warn = L.filter((x) => x.s !== "ok").length, exc = excRows().filter((r) => r.s !== "done").length;
+          return `${head("Mill Map", `PM-1 Kraft is running; ${warn} areas need a look.`, `Plant · Gut No. 184, Kaygaon · layout from the evacuation plan board · ${n - warn} of ${n} live areas green · ${exc} exceptions open on the dashboard ${SAMPLE}`)}
+            <div class="links" role="group" aria-label="Truck routes">${Object.entries(ROUTES).map(([k, r]) => `<button class="btn x-act x-rt" data-route="${k}" aria-pressed="${D.route === k}">${r.l}</button>`).join("")}</div>
+            ${D.route ? `<p class="x-src">${ROUTES[D.route].s}</p>` : ""}
+            <aside class="callout" aria-label="Bottleneck"><p class="callout__head">Where trucks queue</p><p class="callout__lead"><strong>One gate, one weighbridge for inward AND despatch — this is where trucks queue.</strong> The app's Truck Yard timers show it live.</p><button class="btn x-act" data-go="yard">Open Truck Yard</button></aside>
             <div class="x-mapwrap">
               <div class="x-map">${millSvg()}</div>
-              <aside class="x-panel x-${z.s}" aria-live="polite"><h3 class="x-ct">${z.n} ${tag(z.st(), z.s)}</h3>
+              ${z ? `<aside class="x-panel x-${z.s}" aria-live="polite"><h3 class="x-ct">${zr.n} ${tag(z.st(), z.s)}</h3>
                 <dl class="x-facts">${z.k.map(([k, v]) => `<dt>${k}</dt><dd><b>${typeof v === "function" ? v() : v}</b></dd>`).join("")}</dl>
-                <div class="links"><button class="btn x-act" ${z.go}>${z.gl}</button></div>${src(z.src)}</aside>
+                ${z.go ? `<div class="links"><button class="btn x-act" ${z.go}>${z.gl}</button></div>` : ""}${src(z.src + " · sample")}</aside>`
+              : `<aside class="x-panel x-g-${zr.group}" aria-live="polite"><h3 class="x-ct">${zr.n}</h3><dl class="x-facts"><dt>Area type</dt><dd><b>${GROUPS[zr.group][0]}</b></dd></dl><p class="fineprint">No live feed for this area in the demo.</p></aside>`}
             </div>
-            <p class="fineprint">Layout is schematic, not to scale. Green running normally, amber needs a look, red stopped.</p>`;
+            <p class="x-leg">${Object.values(GROUPS).map(([l, k]) => `<span><i style="--k:${k}"></i>${l}</span>`).join("")}</p>
+            <p class="fineprint">Traced from the plant's emergency evacuation plan board; schematic, not to scale. Dot on an area: green running normally, amber needs a look. Hover or tap an area for its full name.</p>`;
         },
         yard() {
           const late = D.trucks.filter((t) => lane(t) < 4 && waitMin(t) > 90).length;
@@ -490,28 +495,75 @@
         }), 1000);
       };
 
-      /* Mill Map zones: [x, y, w, h] in a 800×520 plan; status label is live where data allows. */
+      /* Mill Map: Kaygaon plant layout traced from the evacuation plan board, 1000×1000 plan, north up.
+         Zones: [id, label ("|" = line break), x, y, w, h, group, full name, circle?, rotation]. */
+      const GROUPS = { gate: ["Gate & weighbridge", "#6a6259"], rm: ["Raw material", "#8a6d3b"], pm: ["Paper machines", "#2a63a6"], fg: ["Finished goods & despatch", "#6b4fa0"], pw: ["Power & utilities", "#b4532a"], eff: ["Effluent & water", "#1f7a8c"], sup: ["Support (store, lab, workshop)", "#5f7d3a"] };
+      const STRIP = [["bp", "Broke pulp.", "pm", "Broke pulper"], ["ws1", "Workshop", "sup"], ["ws2", "Workshop", "sup"], ["ac", "Panel A/C", "pw", "Electrical panel A/C room"], ["ct", "Cond. tank", "pw", "Cond. tank & pump"], ["tw", "TW screen", "pm", "T.W. pressure screen"], ["vp", "Vac. pump", "pm", "Vacuum pump"], ["sr", "Stock room", "sup"], ["al", "Alum tank", "pm"], ["po", "Poire", "pm"]];
+      const ZR = [
+        ["gate", "Main gate", 480, 78, 76, 46, "gate", "Main gate & security cabin"], ["wb", "Weigh-|bridge", 560, 84, 80, 136, "gate", "Road weighbridge & ramp"],
+        ["canteen", "Canteen", 390, 84, 84, 66, "sup", "Canteen & cycle stand"], ["park", "Parking", 880, 26, 88, 44, "gate", "Parking area (outside)"],
+        ["fore", "Despatch|foreyard", 648, 84, 212, 116, "fg", "Despatch foreyard"], ["ss", "Elect.|S/S", 866, 84, 100, 116, "pw", "Elect. room & sub-station"],
+        ["bsr2", "BSR Godown No.2", 700, 206, 266, 48, "fg", "BSR Godown No.2 · finished reels"], ["bsr1", "BSR Godown No.1", 700, 260, 266, 48, "fg", "BSR Godown No.1 · finished reels"],
+        ...STRIP.map(([id, l, g, n], i) => [id, l, 556, Math.round(318 + i * 32.2), 84, 30, g, n]),
+        ["rw2", "Rewinder|PM-2", 646, 318, 80, 40, "pm"], ["rw1", "Rewinder|PM-1", 732, 318, 80, 40, "pm"],
+        ["pm2", "Machine|No.2", 646, 362, 80, 238, "pm", "Machine No.2 (PM-2)"], ["pm1", "Machine|No.1", 732, 362, 80, 238, "pm", "Machine No.1 (PM-1 Kraft)"],
+        ["cy", "Coal|yard", 818, 318, 62, 82, "pw", "Boiler coal yard"], ["b1", "Boiler|No.1", 818, 406, 62, 64, "pw", "Boiler No.1"], ["ch1", "Chim.", 818, 476, 62, 54, "pw", "Chimney", 1],
+        ["vac", "Vacuum", 818, 536, 62, 30, "pm"], ["fp", "Fan pump", 818, 570, 62, 30, "pm"], ["ep", "Elect.|panels", 886, 318, 80, 282, "pw", "Electric panel rooms"],
+        ["pmill", "Pulp mills", 646, 606, 166, 34, "pm", "Pulp mills PM-2 & PM-1"], ["pu2", "Pulper|PM-2", 646, 646, 80, 54, "pm", "Pulper PM-2 & conveyor"], ["pu1", "Pulper|PM-1", 732, 646, 80, 54, "pm", "Pulper PM-1 & conveyor"],
+        ["rej", "Rejects", 818, 606, 62, 94, "rm", "Pulper rejection yards"], ["wt", "Water|tower", 556, 646, 84, 54, "eff", "Water storage tower", 1], ["lt", "S/S +|LT", 886, 606, 80, 94, "pw", "Electric substation & LT panel rooms"],
+        ["rmg", "Raw Material Godown", 556, 708, 410, 142, "rm"], ["otla", "Otla 8×7", 556, 858, 140, 52, "rm"], ["g35", "Godown|35×35", 830, 858, 136, 128, "rm", "Godown 35×35 · imported OCC"],
+        ["bag", "Bagasse|shed", 210, 196, 84, 94, "pw", "Bagasse shed"], ["cyb", "Coal yard|+ belt", 300, 196, 120, 54, "pw", "Coal yard & belt conveyor"], ["cc", "Crusher", 426, 196, 68, 54, "pw", "Coal crusher"],
+        ["cy2", "Coal yard", 300, 256, 80, 74, "pw"], ["b2", "Boiler|No.2", 386, 256, 108, 74, "pw", "Boiler No.2"], ["esp", "ESP", 210, 296, 84, 44, "pw", "ESP 11×4"], ["scr", "Scrubber", 210, 346, 84, 44, "pw"],
+        ["nb", "New boiler|+ turbine", 300, 336, 140, 64, "pw", "Boiler with shed & turbine (new)"], ["nch", "New|chim.", 446, 350, 48, 48, "pw", "New chimney", 1],
+        ["ashc", "Ash coll.", 300, 406, 80, 60, "pw", "Ash collection"], ["ro", "RO plant", 386, 406, 108, 60, "eff"], ["ahp", "Ash handling", 110, 396, 184, 70, "pw", "Ash handling plant 12×4"],
+        ["kro", "Krofta|plant", 40, 498, 90, 82, "eff", "Krofta plant"], ...[1, 2, 3, 4].map((i) => [`etp${i}`, `ETP-${i}`, i % 2 ? 140 : 204, i < 3 ? 500 : 562, 56, 56, "eff", `ETP-${i}`, 1]),
+        ["sl", "Sludge bed", 268, 498, 126, 44, "eff"], ["bwt", "Back|water", 330, 548, 64, 64, "eff", "Back water tank", 1], ["tmp", "Temple", 268, 562, 56, 40, "sup"],
+        ["store", "Store", 400, 498, 94, 62, "sup"], ["mnt", "Maint.|shed", 400, 566, 94, 58, "sup", "Maintenance shed"], ["g15", "Godown 35×15", 268, 630, 226, 52, "sup"],
+        ["nbld", "New building 120×22", 70, 722, 380, 56, "sup", 0, 0, 12], ["lab", "Paper lab", 300, 830, 100, 56, "sup"], ["conf", "Conf.|hall", 300, 892, 100, 58, "sup", "Conference hall"],
+        ["comp", "Compr.|room", 406, 886, 88, 58, "pw", "Compressor room"], ["qtr", "Company|quarters", 40, 830, 130, 100, "sup", "Company quarters"], ["lsh", "Labour|shed", 176, 830, 118, 56, "sup", "Shed for labours"],
+        ["stp", "STP", 176, 892, 118, 58, "eff", "Sewage treatment plant"], ["sec2", "West gate", 40, 940, 130, 44, "gate", "Security cabin · west gate"],
+      ].map(([id, label, x, y, w, h, group, n, c, rot]) => ({ id, label, x, y, w, h, group, n: n || label.replace("|", " "), c, rot }));
       const cnt = (f) => D.trucks.filter(f).length;
+      /* Click details for the live areas (sample data); other areas show their name and type. */
       const ZONES = {
-        gate: { n: "Gate", r: [20, 390, 130, 80], s: "ok", st: () => `${cnt((t) => lane(t) === 0)} at gate`, k: [["Trucks at gate", () => cnt((t) => lane(t) === 0)], ["Trucks in today", 9], ["Avg gate time", "6 min"], ["Docs photographed", "100%"]], go: 'data-go="gate"', gl: "Open Gate Entry", src: "App live" },
-        wb: { n: "Weighbridge", r: [20, 260, 130, 100], s: "ok", st: () => `${cnt((t) => lane(t) === 1)} weighing`, k: [["Weighments today", 18], ["Inbound today", "142 MT"], ["Avg wait", "9 min"], ["Calibration", "Valid to 30 Nov"]], go: 'data-go="yard"', gl: "Open Truck Yard", src: "Weighbridge · 10:20" },
-        yard: { n: "Raw-material yard", r: [20, 30, 260, 200], s: "warn", st: () => "Imported OCC 5 days", k: [["Imported OCC", "5 days · container 16 Oct"], ["Domestic OCC", "9 days"], ["Mixed waste paper", "6 days"], ["Stock on hand", "795 MT"]], go: 'data-tab="rm"', gl: "Open Raw material", src: "Store ledger · 08:00" },
-        pulp: { n: "Pulper & stock prep", r: [300, 30, 150, 200], s: "ok", st: () => "Running · 4.2%", k: [["Fibre in today", "112 MT"], ["Consistency", "4.2%"], ["Pulper rejects", "3.1%"], ["Freeness", "380 CSF"]], go: 'data-tab="pq"', gl: "Open Production", src: "DCS · 10:25" },
-        pm: { n: "PM-1 Kraft", r: [470, 30, 310, 110], s: "ok", st: () => "Running · 420 m/min · 18 BF 120 GSM", k: [["Made today", "98 / 110 MT"], ["Efficiency", "87%"], ["Downtime", "1h 27m · web breaks"], ["Broke", "4.2%"]], go: 'data-tab="pq"', gl: "Open Production", src: "Machine log · 10:15" },
-        reel: { n: "Reel & Rewinder", r: [470, 160, 150, 100], s: "ok", st: () => "14 reels today", k: [["Jumbo reels", 14], ["Rewinder speed", "380 m/min"], ["Trim loss", "2.1%"], ["Rolls packed", 96]], go: 'data-tab="pq"', gl: "Open Production", src: "Production register · 10:00" },
-        fg: { n: "Finished goods", r: [640, 160, 140, 170], s: "ok", st: () => "420 MT · 6 grades", k: [["Stock", "420 MT"], ["Biggest grade", "18 BF · 140 MT"], ["Days of dispatch", "≈ 4"], ["Oldest roll", "9 days"]], go: 'data-tab="sd"', gl: "Open Sales & Dispatch", src: "FG store · 08:00" },
-        boiler: { n: "Boiler", r: [300, 260, 150, 100], s: "ok", st: () => "Steam OK", k: [["Steam pressure", "10.5 bar"], ["Steam per MT", "2.6 T"], ["Coal stock", "6 days"], ["Steam cost", "₹3,300 / MT paper"]], go: 'data-tab="cost"', gl: "Open Cost", src: "Boiler log · 10:00" },
-        etp: { n: "ETP", r: [300, 390, 150, 80], s: "warn", st: () => "COD near limit", k: [["COD", "238 / 250 mg/L"], ["BOD", "28 / 30 mg/L"], ["TSS", "62 / 100 mg/L"], ["Water use", "12 m³/MT"]], go: 'data-tab="comp"', gl: "Open Compliance", src: "Lab entry · 09:00" },
-        disp: { n: "Dispatch bay", r: [470, 350, 310, 120], s: "warn", st: () => "92 / 105 MT · 13 MT short", k: [["Dispatched today", "92 / 105 MT"], ["Trucks loaded", 9], ["Trucks waiting", 2], ["Next load", "Shah Packaging · 18 BF"]], go: 'data-tab="sd"', gl: "Open Sales & Dispatch", src: "Weighbridge · 11:00" },
+        gate: { s: "ok", st: () => `${cnt((t) => lane(t) === 0)} waiting at gate`, k: [["Trucks in today", 9], ["Waiting now", () => cnt((t) => lane(t) === 0)], ["Avg gate time", "6 min"], ["Docs photographed", "100%"]], go: 'data-go="gate"', gl: "Open Gate Entry", src: "App live" },
+        wb: { s: "ok", st: () => `${cnt((t) => lane(t) === 1)} weighing`, k: [["Weighments today", 18], ["Avg per weighment", "4 min"], ["Avg wait", "9 min"], ["Shared by", "Inward + despatch"], ["Inbound today", "142 MT"], ["Calibration", "Valid to 30 Nov"]], go: 'data-go="yard"', gl: "Open Truck Yard", src: "Weighbridge · 10:20" },
+        rmg: { s: "ok", st: () => "549 MT OCC & waste paper", k: [["OCC stock here", "549 MT"], ["Bales", "≈ 1,830"], ["Domestic OCC", "9 days"], ["Mixed waste paper", "6 days"], ["Stock on hand · all", "795 MT"]], go: 'data-tab="rm"', gl: "Open Raw material", src: "Store ledger · 08:00" },
+        g35: { s: "warn", st: () => "Imported OCC 5 days", k: [["Imported OCC", "CellMark lot 245.740 MT"], ["Containers", 10], ["Cover", "5 days"], ["Next container", "16 Oct"]], go: 'data-go="imp"', gl: "Open Import Shipment", src: "Form 9 + store ledger · 08:00" },
+        lab: { s: "ok", st: () => `${cnt(isHold)} moisture hold`, k: [["QC tests today", 14], ["Moisture holds", () => cnt(isHold)], ["ETP COD", "238 / 250 mg/L"]], go: 'data-go="qc"', gl: "Open QC", src: "Lab entry · 09:00" },
+        pm1: { s: "warn", st: () => "Running · 87 min down", k: [["Running", "18 BF 120 GSM"], ["Speed", "420 m/min"], ["Made today", "98 / 110 MT"], ["Downtime", "87 min · web breaks 52 min"], ["Efficiency", "87%"], ["Broke", "4.2%"]], go: 'data-tab="pq"', gl: "Open Production", src: "Machine log · 10:15" },
+        pm2: { s: "ok", st: () => "Running · 22 BF 150 GSM", k: [["Running", "22 BF 150 GSM"], ["Speed", "340 m/min"], ["Made today", "61 MT"], ["Downtime", "0 min"]], src: "Machine log · 10:15 · dashboard totals cover PM-1 only" },
+        rw1: { s: "ok", st: () => "14 reels today", k: [["Jumbo reels", 14], ["Rewinder speed", "380 m/min"], ["Trim loss", "2.1%"], ["Rolls packed", 96]], go: 'data-tab="pq"', gl: "Open Production", src: "Production register · 10:00" },
+        pu1: { s: "ok", st: () => "Running · 4.2%", k: [["Fibre in today", "112 MT"], ["Consistency", "4.2%"], ["Pulper rejects", "3.1%"], ["Freeness", "380 CSF"]], go: 'data-tab="pq"', gl: "Open Production", src: "DCS · 10:25" },
+        bsr1: { s: "ok", st: () => "260 MT reels", k: [["Finished reels", "260 MT"], ["Biggest grade", "18 BF · 140 MT"], ["Oldest roll", "9 days"]], go: 'data-tab="sd"', gl: "Open Sales & Dispatch", src: "FG store · 08:00" },
+        bsr2: { s: "ok", st: () => "160 MT reels", k: [["Finished reels", "160 MT"], ["Both godowns", "420 MT · ≈ 4 days of despatch"]], go: 'data-tab="sd"', gl: "Open Sales & Dispatch", src: "FG store · 08:00" },
+        fore: { s: "warn", st: () => "92 / 105 MT · 13 MT short", k: [["Loading now", 2], ["Trucks loaded today", 9], ["Despatched today", "92 / 105 MT"], ["Next load", "Shah Packaging · 18 BF"]], go: 'data-tab="sd"', gl: "Open Sales & Dispatch", src: "Weighbridge · 11:00" },
+        b1: { s: "ok", st: () => "Steam OK · coal", k: [["Steam", "10.5 bar · 13 T/h"], ["Coal used today", "36 MT"], ["Steam per MT paper", "2.6 T"], ["Coal stock", "6 days"]], go: 'data-tab="cost"', gl: "Open Cost", src: "Boiler log · 10:00" },
+        b2: { s: "ok", st: () => "Steam OK · bagasse", k: [["Steam", "10.2 bar · 9 T/h"], ["Bagasse used today", "28 MT"], ["Coal used today", "8 MT"], ["Steam cost", "₹3,300 / MT paper"]], go: 'data-tab="cost"', gl: "Open Cost", src: "Boiler log · 10:00" },
+        etp1: { s: "warn", st: () => "Running · COD near limit", k: [["Status", "Running OK"], ["COD", "238 / 250 mg/L"], ["BOD", "28 / 30 mg/L"], ["TSS", "62 / 100 mg/L"], ["Water use", "12 m³/MT"]], go: 'data-tab="comp"', gl: "Open Compliance", src: "Lab entry · 09:00" },
+        store: { s: "ok", st: () => "6 items received", k: [["Items received today", 6], ["Latest", "Fenner V-belts × 4"], ["Supplier", "Shree Transmission · PO 978"]], go: 'data-go="grn"', gl: "Open GRN", src: "Store GRN · 10:40" },
       };
-      Object.assign(ZONES.pulp, { sn: "Pulper &|stock prep" }); Object.assign(ZONES.reel, { sn: "Reel &|Rewinder", r: [470, 160, 140, 100] });
-      Object.assign(ZONES.fg, { n: "Finished goods godown", sn: "Finished goods|godown", r: [630, 160, 150, 170] });
+      ZONES.etp2 = ZONES.etp3 = ZONES.etp4 = ZONES.etp1;
+      const ROUTES = {
+        in: { l: "Inward raw-material truck", s: "Main gate → Weighbridge (gross) → main road → Raw Material Godown (unload; QC sample to Paper lab) → Weighbridge (tare) → out", d: "M525 30V100L600 128V172L525 200V790H600M600 806H537V214L612 180V122L537 104V30", qc: "M525 806V862H400" },
+        out: { l: "Despatch truck", s: "Main gate → Weighbridge (tare) → Despatch foreyard / BSR godowns (load reels) → Weighbridge (gross) → out", d: "M525 30V100L600 128L720 128V282H735V156L612 170L537 104V30" },
+        store: { l: "Store delivery", s: "Main gate → Weighbridge → Store", d: "M525 30V100L600 128V172L525 200V482H447V502" },
+      };
       function millSvg() {
-        const zone = (id, z) => { const [x, y, w, h] = z.r, L = (z.sn || z.n).split("|"); return `<g class="x-z x-${z.s}${D.zone === id ? " is-sel" : ""}" data-zone="${id}" role="button" tabindex="0" aria-label="${z.n}: ${z.st()}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10"/><circle cx="${x + 18}" cy="${y + 22}" r="5"/>${L.map((l, i) => `<text x="${x + 30}" y="${y + 27 + i * 18}">${l}</text>`).join("")}<text class="x-zs" x="${x + 14}" y="${y + 50 + (L.length - 1) * 18}">${z.st()}</text></g>`; };
-        return `<svg viewBox="0 0 800 540" role="group" aria-label="Top-down plant layout">
-          <g class="x-road"><rect x="0" y="494" width="800" height="40" rx="8"/><text class="x-ax" x="400" y="519" text-anchor="middle">NH 753F · to Chh. Sambhaji Nagar</text></g>
-          <path class="x-route" d="M85 494V470M85 390V360M85 260V230M280 130H300M450 85H470M545 140V160M610 210H630M705 330V350M625 470V494"/>
-          ${Object.entries(ZONES).map(([id, z]) => zone(id, z)).join("")}</svg>`;
+        const zone = (z) => {
+          const I = ZONES[z.id], L = z.label.split("|"), m = Math.max(...L.map((l) => l.length)), fs = Math.max(11, Math.min(20, (z.w - 10) / (m * 0.6), (z.h - 8) / (L.length * 1.2))), cx = z.x + z.w / 2, cy = z.y + z.h / 2;
+          return `<g class="x-z x-g-${z.group}${D.zone === z.id ? " is-sel" : ""}" data-zone="${z.id}" role="button" tabindex="0" aria-label="${z.n}${I ? ": " + I.st() : ""}"${z.rot ? ` transform="rotate(${z.rot} ${cx} ${cy})"` : ""}><title>${z.n}</title>${z.c ? `<ellipse cx="${cx}" cy="${cy}" rx="${z.w / 2}" ry="${z.h / 2}"/>` : `<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" rx="6"/>`}${L.map((l, i) => `<text x="${cx}" y="${(cy + (i - (L.length - 1) / 2) * fs * 1.15).toFixed(1)}" style="font-size:${fs.toFixed(1)}px">${l}</text>`).join("")}${I ? `<circle class="x-zd x-${I.s}" cx="${z.x + z.w - 8}" cy="${z.y + 8}" r="6"/>` : ""}</g>`;
+        };
+        const R = D.route && ROUTES[D.route];
+        return `<svg viewBox="0 0 1000 1000" role="group" aria-label="Kaygaon plant layout, north up">
+          <g class="x-road"><path d="M0 290L290 0H350L0 350Z"/><text transform="translate(160 160) rotate(-45)">30 m Aurangabad–Ahmednagar road</text>
+            <rect x="280" y="26" width="600" height="44"/><rect x="500" y="118" width="50" height="762"/><rect x="40" y="472" width="460" height="20"/><rect x="400" y="852" width="100" height="20"/><rect x="550" y="200" width="150" height="108"/>
+            <text transform="translate(525 420) rotate(-90)">Main road</text><text x="160" y="482" style="font-size:13px">5 m service road</text></g>
+          <path class="x-site" d="M30 330L284 76H970V990H30Z"/>
+          <g class="x-ico" aria-hidden="true" transform="translate(60 110)"><path d="M0 -26L10 8L0 2L-10 8Z"/><text y="-36">N</text></g>
+          ${ZR.map(zone).join("")}
+          <g class="x-ico" aria-hidden="true" transform="translate(796 158)"><rect width="34" height="20" rx="2"/><path d="M36 6h9l6 7v7H36z"/><circle cx="9" cy="23" r="4"/><circle cx="42" cy="23" r="4"/></g>
+          ${R ? `<path class="x-route" d="${R.d}"/>${R.qc ? `<path class="x-route x-route--qc" d="${R.qc}"/>` : ""}` : ""}</svg>`;
       }
 
       /* MD Desk (v2 roadmap) · sample data */
@@ -744,6 +796,7 @@
         else if (d.act === "close") closeOvl();
         else if (d.mic) listen(d.mic === "next" ? D.vn++ % VOICE.length : +d.mic);
         else if (d.zone) pickZone(d.zone);
+        else if (d.route) { D.route = D.route === d.route ? null : d.route; render(); }
         else if (d.go) go(d.go);
         else if (d.tab) { D.tab = d.tab; go("dash"); }
         else if (d.act === "mis") { D.mis = !D.mis; render(); }
