@@ -151,17 +151,24 @@
       .x-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; font: var(--type-small); }
       .x-facts dt { color: var(--text-secondary); } .x-facts dd { margin: 0; }
       .x-mapwrap { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; align-items: start; }
-      .x-map { overflow-x: auto; padding: 12px; border: 1px solid var(--x-line); border-radius: var(--x-r); background: #fff; box-shadow: var(--x-sh); }
-      .x-map svg { display: block; width: 100%; min-width: 680px; height: auto; }
-      .x-road { fill: var(--fill-tertiary); } .x-route { fill: none; stroke: var(--stroke-primary); stroke-width: 2; stroke-dasharray: 6 6; }
+      .x-map { overflow: hidden; padding: 8px; border: 1px solid var(--x-line); border-radius: var(--x-r); background: #fff; box-shadow: var(--x-sh); }
+      .x-map svg { display: block; width: 100%; height: auto; }
+      @media (min-width: 901px) { .x-mapwrap > aside { position: sticky; top: 16px; } }
+      .x-road { fill: var(--fill-tertiary); } .x-road text { fill: var(--text-secondary); font: 500 15px var(--sans); text-anchor: middle; dominant-baseline: central; }
+      .x-site { fill: none; stroke: var(--text-secondary); stroke-width: 2; stroke-dasharray: 8 6; }
+      .x-route { fill: none; stroke: var(--x-data); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 14 10; animation: x-dash 0.9s linear infinite; pointer-events: none; }
+      .x-route--qc { stroke-width: 3; stroke-dasharray: 5 7; }
+      @keyframes x-dash { to { stroke-dashoffset: -24; } }
+      .x-rt[aria-pressed="true"] { background: color-mix(in srgb, var(--x-data) 10%, #fff); border-color: var(--x-data); color: var(--x-data); }
+      .x-g-gate { --t: #6a6259; } .x-g-rm { --t: #8a6d3b; } .x-g-pm { --t: #2a63a6; } .x-g-fg { --t: #6b4fa0; } .x-g-pw { --t: #b4532a; } .x-g-eff { --t: #1f7a8c; } .x-g-sup { --t: #5f7d3a; }
       .x-z { cursor: pointer; outline: none; }
-      .x-z rect { fill: color-mix(in srgb, var(--t) 9%, #fff); stroke: color-mix(in srgb, var(--t) 45%, #fff); stroke-width: 1.5; transition: stroke var(--dur-quick); }
-      .x-z:hover rect, .x-z:focus-visible rect { stroke: var(--t); }
-      .x-z.is-sel rect { stroke: var(--t); stroke-width: 3; }
-      .x-z text { font: 600 14px var(--sans); fill: var(--text-primary); }
-      .x-z .x-zs { font: 500 12px var(--sans); fill: var(--t); }
-      .x-z circle { fill: var(--t); }
-      .x-road text { fill: var(--text-secondary); }
+      .x-z rect, .x-z ellipse { fill: color-mix(in srgb, var(--t) 12%, #fff); stroke: color-mix(in srgb, var(--t) 50%, #fff); stroke-width: 1.5; transition: stroke var(--dur-quick); }
+      .x-z:hover rect, .x-z:focus-visible rect, .x-z:hover ellipse, .x-z:focus-visible ellipse { stroke: var(--t); stroke-width: 2.5; }
+      .x-z.is-sel rect, .x-z.is-sel ellipse { fill: color-mix(in srgb, var(--t) 26%, #fff); stroke: var(--t); stroke-width: 4; }
+      .x-z text { font: 600 20px var(--sans); fill: var(--text-primary); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+      .x-zd { fill: var(--t); stroke: #fff; stroke-width: 2; }
+      .x-ico { fill: var(--text-secondary); pointer-events: none; } .x-ico text { font: 600 18px var(--sans); text-anchor: middle; }
+      @media (prefers-reduced-motion: reduce) { .x-route { animation: none; } }
       .x-lanes { display: grid; grid-template-columns: repeat(5, minmax(190px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 4px; }
       .x-lane { display: grid; gap: 8px; align-content: start; min-height: 160px; padding: 10px; border-radius: var(--x-r); background: var(--fill-tertiary); }
       .x-lane h3 { display: flex; justify-content: space-between; font: 600 14px/1.4 var(--sans); color: var(--text-secondary); padding: 2px 4px; }
