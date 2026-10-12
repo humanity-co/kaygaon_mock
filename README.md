@@ -13,3 +13,6 @@ Clickable prototype of the proposed digitisation platform for Kaygaon Paper Mill
 
 ## Run it
 Open `index.html` in a browser, or enable GitHub Pages (Settings → Pages → Deploy from branch `main`, root). Everything is static; data lives in memory and resets on reload.
+
+---
+Built by **PRAVAHAx**.
