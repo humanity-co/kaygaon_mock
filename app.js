@@ -14,6 +14,11 @@
           { no: "SGWP/0871", sup: "Shree Ganesh Waste Paper", amt: 250240, status: "Exception – qty mismatch (invoice 18.40 MT vs accepted 17.95 MT)" },
           { no: "OSR/0332", sup: "Om Sai Recyclers", amt: 110000, status: "Cleared for posting" },
           { no: "PKS/1190", sup: "Patil Kraft", amt: 340000, status: "Posted – voucher PV-08812" },
+          { no: "OSR/0329", sup: "Om Sai Recyclers", amt: 192000, status: "Exception – moisture deduction not agreed" },
+          { no: "MPM/0451", sup: "Maruti Paper Mart", amt: 157760, status: "Exception – receipt (GRN) missing" },
+          { no: "GST/520/26-27", sup: "Akash Deep Traders", d: "Dt 28-Aug-26 · 7 lines · 7 GRNs · P.O. 21", amt: 719697.3, status: "Awaiting bill pass" },
+          { no: "ST/26-27/606", sup: "Shree Transmission", d: "4 Fenner V-belts · PO 978 · 30 days", amt: 13797, status: "Auto-matched · due 8-Oct" },
+          { no: "MFI/0066/26-27", sup: "Micro Fab Industries, Vapi", d: "Head box parts · PO 1947 · IGST 18%", amt: 7316000, status: "Above ₹10 lakh — sent to MD Decision Inbox" },
         ],
         steps: ["Gate", "Weighment", "QC", "GRN", "Packet to corporate", "Bill matched", "Posted in DataMan", "Paid"],
         view: "dash", tab: "ov", mis: false, period: "today", kpi: null, next: 1047, zone: "pm", photos: 0, voucher: 8813, imported: false, importMsg: "",
@@ -45,7 +50,7 @@
           : `<p class="fineprint">No trucks here right now.</p>`;
       const billTable = (list) =>
         list.length
-          ? table(["Bill", "Supplier", "Amount", "Status"], list.map((b) => ({ hl: D.billOpen === b.no, num: [2], c: [isExc(b) ? `<button class="link x-linkbtn" data-bill="${b.no}">${b.no}</button>` : b.no, b.sup, inr(b.amt), billChip(b)] })))
+          ? table(["Bill", "Supplier", "Amount", "Status"], list.map((b) => ({ hl: D.billOpen === b.no, num: [2], c: [b.no === "SGWP/0871" ? `<button class="link x-linkbtn" data-bill="${b.no}">${b.no}</button>` : b.no, b.sup + (b.d ? `<span class="x-sub">${b.d}</span>` : ""), inr(b.amt), billChip(b)] })))
           : `<p class="fineprint">No bills here right now.</p>`;
 
       function kpis() {
@@ -255,6 +260,7 @@
             <div class="x-sec"><h3 class="x-h3">Things that need your attention</h3>${exceptions()}</div>
             <div class="x-sec"><h3 class="x-h3">Trucks coming in &amp; bills</h3>
               <div class="x-strip">Papers reach head office the same day, not 2–3 days later <small>Receipt packet sent from the app</small></div>
+              <p class="x-sub">Bills passed same day: 3 of 3 (sample)</p>
               <div class="x-kpis">${K.map((k) => `<button class="x-card x-kpi" data-kpi="${k.k}" aria-pressed="${D.kpi === k.k}"><b>${k.val}</b><span>${k.label}</span><span class="x-src">${k.src}</span></button>`).join("")}</div>
               <p class="fineprint">Tap a card to see its records.</p>
               ${sel ? `<div><h3 class="x-h3">${sel.label.split(" · ")[0]}</h3>${sel.list()}</div>` : ""}
@@ -323,7 +329,7 @@
         },
         money() {
           const ag = (a) => hbars([["0–30 days", a[0], "ok"], ["30–60 days", a[1], "warn"], ["60+ days", a[2], "crit"]].map(([l, v, t]) => ({ l, v, t, txt: inr(v) })), 20500000);
-          const WC = [["₹6.0 L", "Money stuck in blocked bills · 3 bills", "App live", 'data-go="grn"'], ["₹1.9 Cr", "Stock value", "Store ledger · 08:00"], ["₹1.05 Cr", "Customers overdue (past 30 days)", "DataMan ageing · 10:30"]];
+          const EX = D.bills.filter(isExc), WC = [[lakh(EX.reduce((s, b) => s + b.amt, 0)), `Money stuck in blocked bills · ${EX.length} bill${EX.length === 1 ? "" : "s"}`, "App live", 'data-go="grn"'], ["₹1.9 Cr", "Stock value", "Store ledger · 08:00"], ["₹1.05 Cr", "Customers overdue (past 30 days)", "DataMan ageing · 10:30"]];
           return `<div class="x-sec"><h3 class="x-h3">Working capital</h3><div class="x-kpis">${WC.map(([v, l, s, a]) => a ? `<button class="x-card x-kpi" ${a}><b>${v}</b><span>${l}</span><span class="x-src">${s} · tap to open bills</span></button>` : `<div class="x-card x-kpi x-static"><b>${v}</b><span>${l}</span><span class="x-src">${s}</span></div>`).join("")}</div></div>
             <div class="x-grid">
               ${card("Sales · this month so far", big("₹2,98,00,000"), "DataMan sales register · 10:30")}
@@ -407,13 +413,15 @@
               <label class="x-field">Invoice weight (MT)<input name="mt" type="number" step="0.1" min="0" placeholder="16.5" /></label>
               <div class="x-full"><div class="x-thumbs" id="thumbs">${thumbs()}</div></div>
               <div class="links x-full"><button type="button" class="btn x-act" data-act="photo">Add document photo</button><button type="submit" class="btn x-act x-primary">Submit</button></div>
-            </form>`;
+            </form>
+            ${wbTicket()}`;
         },
         qc() {
           const list = D.trucks.filter((t) => t.stage === "At gate" || t.stage === "At weighbridge" || t.stage === "QC in progress" || isHold(t));
           if (!list.find((t) => t.id === D.qcSel)) D.qcSel = list[0] ? list[0].id : null;
           const t = truck(D.qcSel);
           return `${head("QC", "Test the load, then accept, hold or reject.", "Sample limit 10% / 2% — set by plant")}
+            ${RULE}
             ${t ? `<div class="x-form">
               <label class="x-field x-full">Truck<select data-sel="qcSel">${list.map((x) => `<option value="${x.id}"${x.id === t.id ? " selected" : ""}>${x.id} · ${x.veh} · ${x.sup}</option>`).join("")}</select></label>
               <p class="x-full">${t.mat} · ${stageChip(t)}</p>
@@ -434,7 +442,9 @@
               <div class="x-checks x-full">${docs.map((d) => `<label><input type="checkbox" name="doc" /> ${d}</label>`).join("")}</div>
               <div class="links x-full"><button type="submit" class="btn x-act x-primary" id="publish" disabled>Publish to corporate</button></div>
             </form>` : `<p class="fineprint">No accepted trucks waiting for a GRN.</p>`}</div>
-            <div><h3 class="x-h3">Bills</h3>${billTable(D.bills)}</div>
+            ${grnDoc()}
+            ${billPass()}
+            <div><h3 class="x-h3">Bills queue</h3>${billTable(D.bills)}</div>
             ${D.billOpen ? match(D.bills.find((b) => b.no === D.billOpen)) : ""}
             <div class="x-panel"><div class="links"><button class="btn x-act" data-act="import">Import DataMan voucher export (sample)</button></div>${D.importMsg ? `<p>${D.importMsg}</p>` : ""}</div>`;
         },
@@ -524,6 +534,7 @@
           ["Approve 150 MT domestic OCC bridge order — ₹20.4 L", "Purchase Head", 'data-go="inbox"'],
           ["Release payment batch — ₹20.5 L", "Accounts Head", 'data-go="inbox"'],
           ["Approve PM-1 felt replacement — ₹3.8 L", "GM Works", 'data-go="inbox"'],
+          ["Pass Micro Fab Industries bill — ₹73.16 L", "Accounts Head", 'data-go="inbox"'],
         ],
       };
       const DEC = [
@@ -531,6 +542,7 @@
         { t: "Approve moisture deduction on MH20 EL 7788", amt: "₹16,200", by: "QC Manager", due: "Today 4 PM", ev: "Moisture 14% vs 10% limit · Om Sai Recyclers · truck IN-1042.", go: 'data-truck="IN-1042"' },
         { t: "Release payment batch", amt: "₹20.5 L", by: "Accounts Head", due: "Tomorrow", ev: "Supplier bills due this week; ₹26.2 L collections due against it.", go: 'data-tab="money"' },
         { t: "Approve PM-1 felt replacement", amt: "₹3.8 L", by: "GM Works", due: "14 Oct", ev: "Worn felt behind today's web breaks — 1h 27m downtime, 6.2 MT lost.", go: 'data-tab="pq"' },
+        { t: "Pass Micro Fab Industries bill — head box parts", amt: "₹73.16 L", by: "Accounts Head", due: "before payment", ev: "Micro Fab Industries, Vapi · MFI/0066/26-27 · PO 1947 · IGST 18% · ₹73,16,000. Above ₹10 lakh, so it needs your approval.", go: 'data-go="grn"', bill: "MFI/0066/26-27" },
       ];
       const COM = [
         { a: "Fix PM-1 web breaks", o: "GM Works", d: "14 Oct", s: "On track", x: 0 },
@@ -588,6 +600,67 @@
             <p class="fineprint">Read-only — cannot approve, post or change anything.</p>`;
         },
       });
+
+      /* Weighbridge ticket, GRN with lab report, bill pass, import shipment · sample data */
+      const kg = (n) => n.toLocaleString("en-IN");
+      const rs2 = (n) => "₹" + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const RULE = `<div class="x-strip x-warn">Moisture allowed: 10% — one rule for weighbridge, QC and GRN <small>Paper slip said 7.5%, GRN said 10%</small></div>`;
+      const facts = (A) => `<dl class="x-facts">${A.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
+      const ckl = (A) => `<ul class="checklist">${A.map(([i, s, n, solid]) => `<li><span class="checklist__item">${i}</span>${chip(s, solid)}${n ? `<span class="checklist__note">${n}</span>` : ""}</li>`).join("")}</ul>`;
+      Object.assign(D, { gm: 12.5, sg: [null, null, null], bp: { mm: false, pass: null }, f9: null, impSent: null });
+      const wbTicket = () => `<div class="x-panel"><div class="x-dochd"><span>Digital weighbridge ticket · RST No. 10685</span><small>Kaygaon Paper Mills · sample</small></div>
+        <div class="x-grid x-grid--2">${facts([["Vehicle", "MH12 UM 0965"], ["Material", "Waste paper (OCC)"], ["Supplier", "Akash Deep Traders"], ["Operator", "S. Pawar"]])}
+        ${facts([["Gross", "<b>15,960 kg</b> · 28-Aug-26 10:42"], ["Tare", "<b>5,880 kg</b> · 28-Aug-26 11:31"], ["Net", "<b>10,080 kg</b>"], ["Moisture rule", "10% · same as QC and GRN"]])}</div>
+        <p class="fineprint">Weights come straight from the weighbridge — no handwritten slip.</p></div>`;
+      const lab = (m) => { const d = Math.max(0, m - 10), dmt = Math.round((7450 * d) / 100) / 1000; return { d: d.toFixed(2), dmt: dmt.toFixed(3), acc: (7.45 - dmt).toFixed(3) }; };
+      const SIGN = [["Prepared", "Stores · GRN clerk"], ["Checked", "QC Manager"], ["Approved", "Plant Head"]];
+      function grnDoc() {
+        const L = lab(D.gm);
+        return `<div class="x-panel"><div class="x-dochd"><span>KAYGAON PAPER MILLS PVT LTD · Goods Receipt Note</span><small>GRN 28080021 · 28-Aug-26 · Akash Deep Traders · P.O. 21</small></div>
+          ${table(["Weight (MT)", "Chl", "Gross", "Tare", "Rcvd", "Short"], [{ num: [1, 2, 3, 4, 5], c: ["Waste paper (OCC)", "7.460", "16.760", "9.310", "7.450", "0.010"] }])}
+          <h3 class="x-h3" style="margin:0">Lab Test Report</h3>
+          ${table(["Test", "Found", "Accept", "Deduction", "Deduction MT", "Accepted MT"], [{ hl: true, num: [2, 3, 4, 5], c: ["Moisture %", `<label class="x-lab"><span class="x-sub">From QC</span><input id="grn-moist" type="number" step="0.01" min="0" value="${D.gm}" aria-label="Moisture found %" /></label>`, "10.00", `<span id="lab-d">${L.d}</span>%`, `<span id="lab-dmt">${L.dmt}</span>`, `<b id="lab-acc">${L.acc}</b>`] }])}
+          <p class="fineprint">Deduction = moisture found − 10.00% allowed, applied to received weight 7.450 MT.</p>
+          <div class="x-sign">${SIGN.map(([r, w], i) => `<div><b>${r} by</b><small>${w}</small>${D.sg[i] ? `<span>${chip("Signed " + D.sg[i])}</span>` : `<span><button class="btn x-act" data-sign="${i}"${i && !D.sg[i - 1] ? " disabled" : ""}>Sign</button></span>`}</div>`).join("")}</div></div>`;
+      }
+      const AK = [["28080002", 3170, 18], ["28080003", 11420, 17.7], ["28080006", 1060, 18], ["28080007", 1710, 18], ["28080016", 2490, 18], ["28080019", 10080, 19.2], ["28080021", 7264, 19]];
+      function billPass() {
+        const P = D.bp, L = AK.map(([g, q, r]) => { const iq = P.mm && g === "28080021" ? 7450 : q; return { g, q, iq, r, a: Math.round(iq * r * 100) / 100 }; });
+        const tx = L.reduce((s, l) => s + l.a, 0), gst = Math.round(tx * 2.5) / 100, tot = tx + 2 * gst;
+        const btn = P.pass ? `<p>${chip("Accounts · passed " + P.pass)} ${chip("Authorised by · " + P.pass)}</p><p class="x-sub"><b>Sent to corporate — same day</b></p>`
+          : P.mm ? `<button class="btn x-act" data-act="hold">Hold — qty differs by 186 kg (moisture deduction)</button>` : `<button class="btn x-act x-primary" data-act="passbill">Pass bill</button>`;
+        return `<div class="x-sec"><h3 class="x-h3">Bill pass · Akash Deep Traders</h3><div class="x-grid x-grid--2">
+          <div class="x-stamp"><h3 class="x-ct">Paper today</h3><div class="x-ink"><span>P.O. 21</span><span>GRN 28080002+3+6+7+16+19+21</span><span>Bill 7,19,697/-</span></div><p class="fineprint">Stamped, signed and couriered — reaches corporate 2–3 days later.</p></div>
+          <article class="x-card"><h3 class="x-ct">Invoice GST/520/26-27 · dt 28-Aug-26 ${tag(P.mm ? "1 line differs" : "7 of 7 matched", P.mm ? "crit" : "ok")}</h3>
+            ${table(["GRN", "Qty kg", "Rate", "Amount", "Match"], L.map((l) => ({ hl: l.iq !== l.q, num: [1, 2, 3], c: [l.g, kg(l.iq), l.r.toFixed(2), rs2(l.a), l.iq !== l.q ? tag(`Accepted ${kg(l.q)} kg`, "crit") : tag("Matched")] })))}
+            ${facts([["Taxable", rs2(tx)], ["CGST 2.5%", rs2(gst)], ["SGST 2.5%", rs2(gst)], ["Total", `<b>${rs2(tot)}</b>`]])}
+            <div class="links">${btn}${P.pass ? "" : `<button class="btn x-act" data-act="mm" aria-pressed="${P.mm}">${P.mm ? "Show matched invoice" : "Try a mismatch (invoice 7,450 vs accepted 7,264 kg)"}</button>`}</div>
+            ${src("Invoice + GRNs + weighbridge · auto-matched")}</article></div>
+          <h3 class="x-h3" style="margin:0">Packet to corporate</h3>
+          ${ckl([["Tax invoice / e-invoice <small>GST/520/26-27</small>", "Attached"], ["E-way bill <small>From Lucky Trading Co., Hingoli · 313 km</small>", "Attached"], ["Weighbridge tickets <small>RST 10685 and others</small>", "Attached"], ["GRNs with lab report <small>7 GRNs</small>", "Attached"], ["Unregistered dealer bill", "Attached"]])}</div>`;
+      }
+      const CN = [["TRHU6185636", 23.34, 23.65, 24.33, "19090002"], ["TIIU7046800", 23.62, 23.39, 23.73, "18090003"], ["CMAU6621822", 25.64, 24.91, 25.45, "18090005"], ["TGBU4327445", 25.02, 24.18, 24.78, "18090004"], ["BEAU4539174", 24.22, 24.4, 24.12, "19090004"], ["TLLU4151892", 24.72, 24.55, 24.6, "19090003"], ["UETU5589723", 24.32, 23.67, 24.34, "19090001"], ["TEMU7383479", 25.25, 24.84, 25.26, "18090001"], ["FCIU9236506", 24.87, 24.64, 25.04, "18090002"], ["CMAU5903837", 24.22, 23.92, 24.09, "21090001"]];
+      const sgn = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(3);
+      screens.imp = function () {
+        const S = [1, 2, 3].map((k) => CN.reduce((s, c) => s + c[k], 0)), short = S[0] - S[1];
+        const LC = [["Invoice value <small>245.220 MT × USD 177 × ₹95.25</small>", "₹41,34,225"], ["Basic customs duty (BCD)", "₹1,03,356"], ["Social welfare surcharge (SWS)", "₹10,336"], ["Stamp duty", "₹4,248"], ["Terminal charges", "₹16,000"], ["Shipping line charges <small>CMA CGM</small>", "₹6,34,800"]];
+        return `${head("Operations · Import Shipment", "Libya OCC from CellMark — 10 containers in, landed at ≈ ₹19,994/MT.", `BL BGG0108465 · BOE 3574135 dt 04/09/2026 ${SAMPLE}`)}
+          <section class="stats"><div class="stat"><span class="stat__fig">245.220 MT</span><span class="stat__label">Invoice · 300 bales</span></div><div class="stat"><span class="stat__fig">10 × 40' HC</span><span class="stat__label">Containers</span></div><div class="stat"><span class="stat__fig">USD 177</span><span class="stat__label">Per MT · at ₹95.25</span></div></section>
+          ${card("Shipment", facts([["Supplier", "CellMark Netherlands BV"], ["Material", "Libya OCC"], ["Bill of lading", "BGG0108465 · CMA CGM"], ["Bill of entry", "3574135 dt 04/09/2026"], ["P.O.", "21"], ["CHA", "Ajay Logistics"]]), "Shipping documents · BOE")}
+          <div class="x-sec"><h3 class="x-h3">Container weights · MT</h3>
+            <div class="x-strip x-crit">ICD short ${short.toFixed(3)} MT against invoice <small>Factory weight is ${sgn(S[2] - S[0])} MT over invoice in total</small></div>
+            ${table(["Container", "Invoice", "ICD", "Factory", "Diff", "GRN"], [...CN.map(([c, i, d, f, g]) => ({ num: [1, 2, 3, 4], c: [c, i.toFixed(3), d.toFixed(3), f.toFixed(3), sgn(f - i), g] })), { hl: true, num: [1, 2, 3, 4], c: ["Total", S[0].toFixed(3), `${S[1].toFixed(3)} ${tag("Short " + short.toFixed(3), "crit")}`, S[2].toFixed(3), sgn(S[2] - S[0]), "10 GRNs"] }])}
+            <p class="fineprint">Diff = factory weight − invoice weight.</p></div>
+          <div class="x-sec"><h3 class="x-h3">Landed cost</h3><div class="pair">
+            <div class="breakdown"><dl>${LC.map(([l, v]) => `<div class="row"><dt>${l}</dt><dd>${v}</dd></div>`).join("")}<div class="row row--total"><dt>Landed cost <small>≈ ₹19,994/MT</small></dt><dd>₹49,02,964</dd></div></dl>
+              <p class="fineprint">IGST ₹2,12,396 is taken as input credit, so it is not part of the cost.</p></div>
+            <aside class="callout" aria-label="Compared with local OCC"><p class="callout__head">vs local OCC</p><p class="callout__lead"><strong>Imported lands at ≈ ₹19,994/MT.</strong> Local OCC costs ₹18,000–19,200/MT.</p></aside>
+          </div></div>
+          <div class="x-sec"><h3 class="x-h3">Documents</h3>
+            ${ckl([["Commercial invoice <small>CellMark Netherlands BV</small>", "Received"], ["Bill of lading <small>BGG0108465</small>", "Received"], ["Bill of entry <small>3574135 dt 04/09/2026</small>", "Received"], ["Duty payment <small>BCD, SWS, IGST</small>", "Received"], ["CHA bill <small>Ajay Logistics</small>", "Received"], ["GRNs <small>10 containers</small>", "Received"],
+              ["Form 9 <small>Quantity received</small>", D.f9 ? "Filled" : "To be filled", D.f9 ? `${D.f9} MT · factory weight` : `<button class="btn x-act" data-act="form9">Fill 245.740 MT</button>`, !D.f9]])}
+            <div class="links">${D.impSent ? chip(`Import packet sent to corporate · ${D.impSent}`) : `<button class="btn x-act x-primary" data-act="sendimp">Send import packet to corporate</button>`}</div></div>`;
+      };
 
       function thumbs() {
         return Array.from({ length: D.photos }, (_, i) => `<div class="x-thumb">Doc ${i + 1}</div>`).join("") || `<p class="fineprint">No document photos yet.</p>`;
@@ -682,14 +755,20 @@
         else if (d.qc) qc(d.qc);
         else if (d.clear) { D.bills.find((b) => b.no === d.clear).status = "Cleared for posting"; render(); toast(`${d.clear} cleared for posting`); }
         else if (d.act === "import") importDataMan();
-        else if (d.dec) { const [i, st] = d.dec.split(":"), x = DEC[+i]; x.st = st; x.at = now(); render(); toast(`${x.t}: ${st.toLowerCase()} at ${x.at}`); }
+        else if (d.sign) { D.sg[+d.sign] = "28-Aug-26 " + now(); render(); toast(`GRN 28080021 ${SIGN[+d.sign][0].toLowerCase()} by ${SIGN[+d.sign][1]}`); }
+        else if (d.act === "mm") { D.bp.mm = !D.bp.mm; render(); }
+        else if (d.act === "hold") toast("Bill held — qty differs by 186 kg (moisture deduction)");
+        else if (d.act === "passbill") { D.bp.pass = now(); D.bills.find((b) => b.no === "GST/520/26-27").status = `Passed ${D.bp.pass} · sent to corporate same day`; render(); toast("GST/520/26-27 passed · sent to corporate — same day"); }
+        else if (d.act === "form9") { D.f9 = CN.reduce((s, c) => s + c[3], 0).toFixed(3); render(); toast(`Form 9 filled · ${D.f9} MT received`); }
+        else if (d.act === "sendimp") { D.impSent = now(); render(); toast("Import packet sent to corporate"); }
+        else if (d.dec) { const [i, st] = d.dec.split(":"), x = DEC[+i]; x.st = st; x.at = now(); const xb = x.bill && D.bills.find((b) => b.no === x.bill); if (xb) xb.status = `MD ${st.toLowerCase()} · ${x.at}`; render(); toast(`${x.t}: ${st.toLowerCase()} at ${x.at}`); }
         else if (d.done) { const c = COM[+d.done]; c.s = "Done"; render(); toast(`${c.a} marked done`); }
         else if (d.ask) { const q = ASK[+d.ask]; D.chat.push([q[0], reply(q[1], q[2])]); render(); }
         else if (d.act === "wireset") { D.wi = { ...WI0 }; document.querySelectorAll("[data-wi]").forEach((s) => (s.value = D.wi[s.dataset.wi])); whatIf(); }
       });
       function pickZone(z) { D.zone = z; render(); const g = document.querySelector(`[data-zone="${z}"]`); if (g) g.focus(); }
       document.addEventListener("keydown", (e) => { const g = e.target.closest && e.target.closest("[data-zone]"); if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); pickZone(g.dataset.zone); } });
-      document.addEventListener("input", (e) => { const k = e.target.dataset.wi; if (k) { D.wi[k] = +e.target.value; whatIf(); } });
+      document.addEventListener("input", (e) => { if (e.target.id === "grn-moist") { D.gm = parseFloat(e.target.value) || 0; const L = lab(D.gm); ["d", "dmt", "acc"].forEach((k) => ($("#lab-" + k).textContent = L[k])); return; } const k = e.target.dataset.wi; if (k) { D.wi[k] = +e.target.value; whatIf(); } });
       let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(drawX, 120); });
 
       document.addEventListener("change", (e) => {
