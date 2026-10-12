@@ -209,6 +209,15 @@
       .x-wave i { width: 3px; height: 100%; border-radius: 2px; background: currentColor; animation: x-wave 0.9s ease-in-out infinite; }
       .x-wave i:nth-child(2) { animation-delay: 0.15s; } .x-wave i:nth-child(3) { animation-delay: 0.3s; } .x-wave i:nth-child(4) { animation-delay: 0.45s; }
       @keyframes x-wave { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+      .x-stamp { display: grid; gap: 12px; align-content: start; padding: 18px 20px; border: 1px dashed var(--stroke-primary); border-radius: var(--x-r); background: var(--fill-tertiary); }
+      .x-ink { justify-self: start; display: grid; gap: 2px; padding: 10px 14px; border: 2px solid var(--x-crit); border-radius: 6px; color: var(--x-crit); font: 600 14px/1.5 ui-monospace, Menlo, monospace; transform: rotate(-3deg); }
+      .x-dochd { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding-bottom: 10px; border-bottom: 1px solid var(--x-line); font: 600 14px/1.4 var(--sans); }
+      .x-dochd small { font: var(--type-caption); color: var(--text-secondary); }
+      .x-sign { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+      .x-sign > div { display: grid; gap: 4px; align-content: start; padding-top: 8px; border-top: 1px solid var(--stroke-primary); font: var(--type-small); }
+      .x-sign small { font: var(--type-caption); color: var(--text-secondary); }
+      .x-lab input { width: 90px; min-height: var(--tap); padding: 0 8px; border: 1px solid var(--stroke-primary); border-radius: 8px; font: var(--type-body); text-align: right; }
+      @media (max-width: 760px) { .x-sign { grid-template-columns: minmax(0, 1fr); } }
       @media (prefers-reduced-motion: reduce) { .x-wave i, .x-tv-prog i { animation: none; } .x-tv-prog i { width: 100%; } }
       @media (max-width: 900px) { .x-tv-z { zoom: 1; } .x-tv-k { grid-template-columns: repeat(2, minmax(0, 1fr)); } .x-tv-k b { font-size: 36px; } .x-ovl--tv { padding: 16px; } }
       @media (max-width: 900px) { .x-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .x-mapwrap { grid-template-columns: minmax(0, 1fr); } }
