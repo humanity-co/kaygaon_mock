@@ -75,7 +75,7 @@
         const p = a.map((v, i) => `${x(i)},${(37 - ((v - mn) / r) * 32).toFixed(1)}`).join(" ");
         return `<svg class="${cls} x-${t}" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><polygon points="${x(0)},40 ${p} ${x(a.length - 1)},40"/><polyline points="${p}"/></svg>`;
       }
-      /* Charts: hark.js's built-in line chart (axis values, gridlines), drawn from data-points after each render. */
+      /* Charts: ui.js line chart (axis values, gridlines), drawn from data-points after each render. */
       const lineChart = (lab, a, cap, aria) => `<div class="chart is-in" data-points="${lab.map((l, i) => `${l}:${a[i]}`).join(",")}" data-caption="${cap}" aria-label="${aria}"></div>`;
       const trendChart = (a, lab) => lineChart(lab, a, "₹ per MT · monthly", `₹ per MT moved from ${inr(a[0])} in ${lab[0]} to ${inr(a[a.length - 1])} in ${lab[lab.length - 1]}`);
       /* Own SVG chart (x-ch): drawn after each render at the box's real width, so text stays 12px. */
